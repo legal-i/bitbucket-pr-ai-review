@@ -1,6 +1,6 @@
 module review
 
-go 1.21.2
+go 1.21.3
 
 require (
 	github.com/avast/retry-go/v4 v4.5.0

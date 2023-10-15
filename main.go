@@ -21,12 +21,14 @@ const gpt432MaxTokens = 32000
 const greeting = "The friendly GPT-4 reviewer"
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Please provide PR number")
-		return
+	prId := os.Getenv("BITBUCKET_PR_ID")
+	if prId == "" {
+		if len(os.Args) < 2 {
+			fmt.Println("Please provide PR number")
+			return
+		}
+		prId = os.Args[1]
 	}
-
-	prId := os.Args[1]
 
 	if _, err := os.Stat(".env"); !os.IsNotExist(err) {
 		err := godotenv.Load()

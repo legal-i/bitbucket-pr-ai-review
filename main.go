@@ -48,9 +48,10 @@ func main() {
 	commentsJson := comments.(map[string]any)
 	commentsValues := commentsJson["values"].([]any)
 	for _, c := range commentsValues {
-		content := c.(map[string]any)["content"].(map[string]any)["html"].(string)
+		content := c.(map[string]any)["content"].(map[string]any)
+		html := content["html"].(string)
 		// don't review a second time
-		if strings.Contains(content, greeting) {
+		if strings.Contains(html, greeting) {
 			return
 		}
 	}

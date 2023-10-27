@@ -7,8 +7,9 @@ import (
 	"github.com/enescakir/emoji"
 	"github.com/joho/godotenv"
 	"github.com/ktrysmt/go-bitbucket"
-	"github.com/sashabaranov/go-openai"
 	"github.com/tiktoken-go/tokenizer"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
 	"io"
 	"math"
 	"os"
@@ -19,6 +20,15 @@ import (
 const gpt4MaxTokens = 8000
 const gpt432MaxTokens = 32000
 const greeting = "The friendly GPT-4 reviewer"
+
+const prompt = `Review Pull Request enclosed in triple backticks. Take title and description into account. Don't repeat title and description in the review.
+             Output concise with bullet points (**Summary**, **Suggestions**, **Potential bugs**, **Potential performance improvements**) in Markdown format.`
+
+type prInfo struct {
+	title       string
+	description string
+	diff        string
+}
 
 func main() {
 	prId := os.Getenv("BITBUCKET_PR_ID")
@@ -52,9 +62,20 @@ func main() {
 		html := content["html"].(string)
 		// don't review a second time
 		if strings.Contains(html, greeting) {
+			fmt.Println("Already reviewed")
 			return
 		}
 	}
+
+	// fetch title and description of the PR
+	pr, err := bitbucketAuth.Repositories.PullRequests.Get(&bitbucket.PullRequestsOptions{
+		ID:       prId,
+		Owner:    "legal-i",
+		RepoSlug: "legal-i",
+	})
+	check(err)
+	title := pr.(map[string]any)["title"].(string)
+	description := pr.(map[string]any)["description"].(string)
 
 	diff, err := bitbucketAuth.Repositories.PullRequests.Diff(&bitbucket.PullRequestsOptions{
 		ID:       prId,
@@ -73,20 +94,41 @@ func main() {
 	enc, err := tokenizer.ForModel(tokenizer.GPT4)
 	check(err)
 
-	ids, _, err := enc.Encode(diffString)
-	review := ""
+	totalPrompt := prompt + " " + title + " " + description + " " + diffString
 
-	config := openai.DefaultAzureConfig(os.Getenv("AZURE_OPENAI_API_KEY"),
-		os.Getenv("AZURE_OPENAI_BASE_URL"))
-	openAiClient := openai.NewClientWithConfig(config)
+	ids, _, err := enc.Encode(totalPrompt)
+	review := ""
 
 	if len(ids) > gpt432MaxTokens {
 		fmt.Println("Too many tokens")
 		return
 	} else {
+
+		var model string
+		if len(ids)+30 > gpt4MaxTokens {
+			model = "gpt-4-32k"
+		} else {
+			model = "gpt-4"
+		}
+
+		llm, err := openai.New(
+			openai.WithAPIType(openai.APITypeAzure),
+			openai.WithToken(os.Getenv("AZURE_OPENAI_API_KEY")),
+			openai.WithModel(model),
+			openai.WithBaseURL(os.Getenv("AZURE_OPENAI_BASE_URL")),
+			openai.WithEmbeddingModel("text-embedding-ada-002"),
+		)
+		check(err)
+
+		prInfo := prInfo{
+			title:       title,
+			description: description,
+			diff:        diffString,
+		}
+
 		review, err = retry.DoWithData(
 			func() (string, error) {
-				return chatGptReview(openAiClient, diffString, len(ids) > gpt4MaxTokens)
+				return chatGptReview(llm, prInfo)
 			},
 			retry.Context(context.Background()),
 			retry.Attempts(5),
@@ -113,33 +155,17 @@ func main() {
 	check(err)
 }
 
-func chatGptReview(openAiClient *openai.Client, diff string, gpt32 bool) (string, error) {
-	prompt := `Review PR enclosed triple backticks. 
-             Bullet points: -Summary, -Suggestions, -Possible bugs, -Possible performance improvements.
-             Summary short with bullet points. Return Bitbucket comment.`
-
-	model := openai.GPT4
-	if gpt32 {
-		model = openai.GPT432K
+func chatGptReview(llm *openai.LLM, prInfo prInfo) (string, error) {
+	p := prompt + " ```Title: " + prInfo.title + "\nDescription: " + prInfo.description + "\nGit Diff:\n\n" + prInfo.diff + "```"
+	tokenLen := llm.GetNumTokens(p)
+	var maxTokens int
+	if tokenLen > gpt4MaxTokens {
+		maxTokens = gpt432MaxTokens - tokenLen
+	} else {
+		maxTokens = gpt4MaxTokens - tokenLen
 	}
-
-	resp, err := openAiClient.CreateChatCompletion(
-		context.Background(),
-		openai.ChatCompletionRequest{
-			Model:       model,
-			Temperature: math.SmallestNonzeroFloat32,
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleUser,
-					Content: prompt + " ```" + diff + "```",
-				},
-			},
-		},
-	)
-	if err != nil {
-		return "", err
-	}
-	return resp.Choices[0].Message.Content, err
+	completion, err := llm.Call(context.Background(), p, llms.WithTemperature(math.SmallestNonzeroFloat32), llms.WithMaxTokens(maxTokens))
+	return completion, err
 }
 
 func check(e error) {

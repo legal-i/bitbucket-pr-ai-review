@@ -97,21 +97,16 @@ func main() {
 	ids, _, err := enc.Encode(totalPrompt)
 	review := ""
 
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	config := openai.DefaultConfig(apiKey)
-	openAiClient := openai.NewClientWithConfig(config)
-
 	if len(ids) > 128_000+4095 {
 		fmt.Println("Too many tokens")
 		return
 	} else {
 
 		llm, err := openai.New(
-			openai.WithAPIType(openai.APITypeAzure),
-			openai.WithToken(os.Getenv("AZURE_OPENAI_API_KEY")),
-			openai.WithModel(model),
-			openai.WithBaseURL(os.Getenv("AZURE_OPENAI_BASE_URL")),
-			openai.WithEmbeddingModel("text-embedding-ada-002"),
+			openai.WithAPIType(openai.APITypeOpenAI),
+			openai.WithToken(os.Getenv("OPENAI_API_KEY")),
+			openai.WithModel("gpt-4-0125-preview"),
+			openai.WithEmbeddingModel("text-embedding-3-large"),
 		)
 		check(err)
 
@@ -138,10 +133,7 @@ func main() {
 		return
 	}
 
-	review = strings.TrimPrefix(review, "```markdown")
-	review = strings.TrimPrefix(review, "```")
-	review = strings.TrimSuffix(review, "\n")
-	review = strings.TrimSuffix(review, "```")
+	review = strings.ReplaceAll(review, ":**", ":**\n")
 	review = fmt.Sprintf(greeting+" %v:\n\n", emoji.Robot) + review
 
 	_, err = bitbucketAuth.Repositories.PullRequests.AddComment(&bitbucket.PullRequestCommentOptions{
@@ -155,14 +147,7 @@ func main() {
 
 func chatGptReview(llm *openai.LLM, prInfo prInfo) (string, error) {
 	p := prompt + " ```Title: " + prInfo.title + "\nDescription: " + prInfo.description + "\nGit Diff:\n\n" + prInfo.diff + "```"
-	tokenLen := llm.GetNumTokens(p)
-	var maxTokens int
-	if tokenLen > gpt4MaxTokens {
-		maxTokens = gpt432MaxTokens - tokenLen
-	} else {
-		maxTokens = gpt4MaxTokens - tokenLen
-	}
-	completion, err := llm.Call(context.Background(), p, llms.WithTemperature(math.SmallestNonzeroFloat32), llms.WithMaxTokens(maxTokens))
+	completion, err := llm.Call(context.Background(), p, llms.WithTemperature(math.SmallestNonzeroFloat32), llms.WithMaxTokens(4095))
 	return completion, err
 }
 

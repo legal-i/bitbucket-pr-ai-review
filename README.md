@@ -16,21 +16,16 @@ Before you can use this tool, make sure you have the following prerequisites:
 
 To ensure the tool works seamlessly, you need to set the following environment variables:
 
-1. **AZURE_OPENAI_API_KEY:** Your API key for Azure OpenAI.
-
-2. **AZURE_OPENAI_BASE_URL:** The base URL for the Azure OpenAI API.
-
-3. **BITBUCKET_USERNAME:** Your Bitbucket username, which will be used for authentication.
-
-4. **BITBUCKET_APP_PASSWORD:** An App Password generated from your Bitbucket account. 
+- **OPENAI_API_KEY:** Your API key for OpenAI.
+- **BITBUCKET_USERNAME:** Your Bitbucket username, which will be used for authentication.
+- **BITBUCKET_APP_PASSWORD:** An App Password generated from your Bitbucket account. 
 This password should have appropriate access rights to the repositories you want to review PRs.
 
 You can set these environment variables in your system or create a `.env` file in the same directory as this tool and populate it with the necessary values. 
 Here's an example of how the `.env` file should look:
 
 ```dotenv
-AZURE_OPENAI_API_KEY=your_azure_openai_api_key
-AZURE_OPENAI_BASE_URL=https://your_azure_openai_base_url
+OPENAI_API_KEY=your_azure_openai_api_key
 BITBUCKET_USERNAME=your_bitbucket_username
 BITBUCKET_APP_PASSWORD=your_bitbucket_app_password
 ```

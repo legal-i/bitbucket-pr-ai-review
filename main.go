@@ -17,8 +17,6 @@ import (
 	"time"
 )
 
-const gpt4MaxTokens = 8000
-const gpt432MaxTokens = 32000
 const greeting = "The friendly GPT-4 reviewer"
 
 const prompt = `Review Pull Request enclosed in triple backticks. Take title and description into account. Don't repeat title and description in the review.
@@ -99,17 +97,14 @@ func main() {
 	ids, _, err := enc.Encode(totalPrompt)
 	review := ""
 
-	if len(ids) > gpt432MaxTokens {
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	config := openai.DefaultConfig(apiKey)
+	openAiClient := openai.NewClientWithConfig(config)
+
+	if len(ids) > 128_000+4095 {
 		fmt.Println("Too many tokens")
 		return
 	} else {
-
-		var model string
-		if len(ids)+30 > gpt4MaxTokens {
-			model = "gpt-4-32k"
-		} else {
-			model = "gpt-4"
-		}
 
 		llm, err := openai.New(
 			openai.WithAPIType(openai.APITypeAzure),
@@ -131,8 +126,8 @@ func main() {
 				return chatGptReview(llm, prInfo)
 			},
 			retry.Context(context.Background()),
-			retry.Attempts(5),
-			retry.MaxDelay(1*time.Minute),
+			retry.Attempts(10),
+			retry.MaxDelay(2*time.Minute),
 			retry.DelayType(retry.BackOffDelay),
 		)
 		check(err)
@@ -143,9 +138,12 @@ func main() {
 		return
 	}
 
+	review = strings.TrimPrefix(review, "```markdown")
+	review = strings.TrimPrefix(review, "```")
+	review = strings.TrimSuffix(review, "\n")
+	review = strings.TrimSuffix(review, "```")
 	review = fmt.Sprintf(greeting+" %v:\n\n", emoji.Robot) + review
 
-	// add comment to PR
 	_, err = bitbucketAuth.Repositories.PullRequests.AddComment(&bitbucket.PullRequestCommentOptions{
 		PullRequestID: prId,
 		Owner:         "legal-i",

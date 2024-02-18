@@ -20,11 +20,11 @@ gofmt:
 
 build:
 ifeq ($(detected_OS),Windows)
-	@docker run -w /src -v $(shell pwd):/src $(GOLANG_IMAGE) env GOOS=windows GOARCH=amd64 go build -ldflags='-s' -o read_migration.exe main.go
+	@docker run -w /src -v $(shell pwd):/src $(GOLANG_IMAGE) env GOOS=windows GOARCH=amd64 go build -ldflags='-s' -o review.exe main.go
 endif
 ifeq ($(detected_OS),Darwin) # Mac OS X
-	@docker run -w /src -v $(shell pwd):/src $(GOLANG_IMAGE) env GOOS=darwin GOARCH=amd64 go build -ldflags='-s' -o read_migration main.go
+	@docker run -w /src -v $(shell pwd):/src $(GOLANG_IMAGE) env GOOS=darwin GOARCH=amd64 go build -ldflags='-s' -o review main.go
 endif
 ifeq ($(detected_OS),Linux)
-	@docker run -w /src -v $(shell pwd):/src $(GOLANG_IMAGE) env GOOS=linux GOARCH=amd64 go build -ldflags='-s' -o read_migration main.go
+	@docker run -w /src -v $(shell pwd):/src $(GOLANG_IMAGE) env GOOS=linux GOARCH=amd64 go build -ldflags='-s' -o review main.go
 endif

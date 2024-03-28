@@ -75,6 +75,11 @@ func main() {
 	title := pr.(map[string]any)["title"].(string)
 	description := pr.(map[string]any)["description"].(string)
 
+	if strings.Contains(title, "Lokalise") || strings.Contains(title, "[Snyk]") {
+		fmt.Println("Ignoring PR")
+		return
+	}
+
 	diff, err := bitbucketAuth.Repositories.PullRequests.Diff(&bitbucket.PullRequestsOptions{
 		ID:       prId,
 		Owner:    "legal-i",

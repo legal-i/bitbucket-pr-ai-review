@@ -106,14 +106,32 @@ func main() {
 		fmt.Println("Too many tokens")
 		return
 	} else {
+		openaiApiKey := os.Getenv("OPENAI_API_KEY")
+		azureOpenaiApiKey := os.Getenv("AZURE_OPENAI_API_KEY")
+		if openaiApiKey == "" && azureOpenaiApiKey == "" {
+			fmt.Println("No API key")
+			return
+		}
 
-		llm, err := openai.New(
-			openai.WithAPIType(openai.APITypeOpenAI),
-			openai.WithToken(os.Getenv("OPENAI_API_KEY")),
-			openai.WithModel("gpt-4-0125-preview"),
-			openai.WithEmbeddingModel("text-embedding-3-large"),
-		)
-		check(err)
+		var llm *openai.LLM
+		if openaiApiKey != "" {
+			llm, err = openai.New(
+				openai.WithAPIType(openai.APITypeOpenAI),
+				openai.WithToken(os.Getenv("OPENAI_API_KEY")),
+				openai.WithModel(os.Getenv("OPENAI_MODEL")),
+				openai.WithEmbeddingModel("text-embedding-3-large"),
+			)
+			check(err)
+		} else {
+			llm, err = openai.New(
+				openai.WithAPIType(openai.APITypeAzure),
+				openai.WithToken(os.Getenv("AZURE_OPENAI_API_KEY")),
+				openai.WithModel(os.Getenv("AZURE_OPENAI_MODEL")),
+				openai.WithBaseURL(os.Getenv("AZURE_OPENAI_BASE_URL")),
+				openai.WithEmbeddingModel("text-embedding-3-large"),
+			)
+			check(err)
+		}
 
 		prInfo := prInfo{
 			title:       title,

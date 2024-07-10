@@ -1,7 +1,7 @@
 SHELL:=/bin/bash
 
 
-GOLANG_IMAGE=golang:1.21.3
+GOLANG_IMAGE=golang:1.22.3
 
 ifeq ($(OS),Windows_NT)
     detected_OS := Windows

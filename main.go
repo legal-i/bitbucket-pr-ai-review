@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-const greeting = "The friendly GPT-4 reviewer"
+const greeting = "The friendly GPT-4o reviewer"
 
 const prompt = `Review Pull Request enclosed in triple backticks. Take title and description into account. Don't repeat title and description in the review.
              Output concise with bullet points (**Summary**, **Suggestions**, **Potential bugs**, **Potential performance improvements**) in Markdown format.`
